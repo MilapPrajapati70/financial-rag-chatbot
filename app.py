@@ -1,6 +1,14 @@
 import streamlit as st
 import tempfile
 import os
+
+# Must happen before rag.py imports so os.getenv() works
+try:
+    os.environ["GOOGLE_API_KEY"] = st.secrets["GOOGLE_API_KEY"]
+    os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
+except Exception:
+    pass
+
 from rag import load_and_chunk, build_vectorstore, build_qa_chain
 
 st.set_page_config(page_title="Financial RAG Chatbot", page_icon="📄", layout="wide")
