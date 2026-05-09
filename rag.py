@@ -12,7 +12,7 @@ from langchain_core.output_parsers import StrOutputParser
 
 load_dotenv()
 
-# ── 1. Load & chunk a PDF ────────────────────────────────────────────────────
+# Load the PDF and break it into smaller pieces
 
 def load_and_chunk(pdf_path: str):
     if not os.path.exists(pdf_path):
@@ -35,7 +35,7 @@ def load_and_chunk(pdf_path: str):
     print(f"Loaded {len(pages)} pages → {len(chunks)} chunks")
     return chunks,pages
 
-# ── 2. Build the FAISS vector store ─────────────────────────────────────────
+# Store chunk embeddings in FAISS for fast lookup
 
 def build_vectorstore(chunks):
     embeddings = GoogleGenerativeAIEmbeddings(
@@ -46,12 +46,12 @@ def build_vectorstore(chunks):
     return vectorstore
 
 
-# ── 3. Build the QA chain ────────────────────────────────────────────────────
+# Connect retriever + LLM into a single pipeline
 
-PROMPT_TEMPLATE = """You are a helpful assistant that answers questions about a document.
-Use the context below to answer the question as best you can.
-If the exact answer is not in the context, use what IS there to make a reasonable inference.
-Always cite the page number when possible.
+PROMPT_TEMPLATE = """You are a document assistant. 
+Answer the question using only the context provided below.
+If you can't find the answer, say so honestly.
+Reference page numbers where relevant.
 
 Context:
 {context}
@@ -59,7 +59,6 @@ Context:
 Question: {question}
 
 Answer:"""
-
 def build_qa_chain(vectorstore, first_page_text=""):
     prompt = PromptTemplate(
         template=PROMPT_TEMPLATE,
@@ -75,7 +74,7 @@ def build_qa_chain(vectorstore, first_page_text=""):
         search_kwargs={"k": 4},
         embedding=query_embeddings
     )
-
+   # Format retrieved chunks with page numbers and some of the first page for extra context
     def format_docs(docs):
         base = f"[Always available - Page 0 header]\n{first_page_text[:300]}\n\n"
         retrieved = "\n\n".join(
@@ -96,7 +95,7 @@ def build_qa_chain(vectorstore, first_page_text=""):
     return chain, retriever
 
 
-# ── 4. Quick test ────────────────────────────────────────────────────────────
+# Quick terminal test — run directly to verify pipeline works
 
 if __name__ == "__main__":
     pdf_path = sys.argv[1] if len(sys.argv) > 1 else "docs/sample.pdf"

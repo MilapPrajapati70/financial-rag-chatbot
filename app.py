@@ -5,9 +5,9 @@ from rag import load_and_chunk, build_vectorstore, build_qa_chain
 
 st.set_page_config(page_title="Financial RAG Chatbot", page_icon="📄", layout="wide")
 st.title("📄 Financial Document Q&A")
-st.caption("Upload any PDF — annual reports, 10-Ks, financial statements — and ask questions in plain English.")
+st.caption("Ask questions about any financial document — powered by RAG")
 
-# ── Sidebar: PDF upload ──────────────────────────────────────────────────────
+
 with st.sidebar:
     st.header("Upload Document")
     uploaded_file = st.file_uploader("Choose a PDF", type="pdf")
@@ -18,7 +18,7 @@ with st.sidebar:
     st.divider()
     st.caption("Built with LangChain · FAISS · Groq Llama 3.1")
 
-# ── Session state ────────────────────────────────────────────────────────────
+# Keep chat history and pipeline in session so it survives reruns
 if "chain" not in st.session_state:
     st.session_state.chain = None
 if "retriever" not in st.session_state:
@@ -28,9 +28,10 @@ if "messages" not in st.session_state:
 if "current_file" not in st.session_state:
     st.session_state.current_file = None
 
-# ── Process PDF when uploaded ────────────────────────────────────────────────
+# Only reprocess if a new file was uploaded
 if uploaded_file and uploaded_file.name != st.session_state.current_file:
     with st.spinner("Reading and indexing document..."):
+        # Save to temp file since PyPDFLoader needs a file path
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
             tmp.write(uploaded_file.read())
             tmp_path = tmp.name
@@ -47,13 +48,14 @@ if uploaded_file and uploaded_file.name != st.session_state.current_file:
 
     st.success(f"Ready! Indexed {len(chunks)} chunks. Ask anything below.")
 
-# ── Chat interface ───────────────────────────────────────────────────────────
+# Chat interface
 if st.session_state.chain:
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
             st.write(msg["content"])
             if msg.get("sources"):
                 with st.expander("Sources"):
+                    # Render previous messages on rerun with sources
                     for src in msg["sources"]:
                         st.caption(f"Page {src['page']}: {src['text']}")
 
@@ -72,6 +74,7 @@ if st.session_state.chain:
                     for d in docs
                 ]
                 st.write(answer)
+                # Show sources in a collapsible section
                 with st.expander("Sources"):
                     for src in sources:
                         st.caption(f"Page {src['page']}: {src['text']}")
