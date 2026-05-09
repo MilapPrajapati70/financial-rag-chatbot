@@ -40,8 +40,9 @@ def load_and_chunk(pdf_path: str):
 def build_vectorstore(chunks):
     embeddings = GoogleGenerativeAIEmbeddings(
         model="models/gemini-embedding-001",
-        task_type="retrieval_document"
+        task_type="retrieval_document",
         google_api_key=os.getenv("GOOGLE_API_KEY")
+        
     )
     vectorstore = FAISS.from_documents(chunks, embeddings)
     return vectorstore
@@ -69,12 +70,13 @@ def build_qa_chain(vectorstore, first_page_text=""):
 
     query_embeddings = GoogleGenerativeAIEmbeddings(
         model="models/gemini-embedding-001",
-        task_type="retrieval_query"
+        task_type="retrieval_query",
         google_api_key=os.getenv("GOOGLE_API_KEY")
     )
     retriever = vectorstore.as_retriever(
         search_kwargs={"k": 4},
         embedding=query_embeddings
+        
     )
    # Format retrieved chunks with page numbers and some of the first page for extra context
     def format_docs(docs):
