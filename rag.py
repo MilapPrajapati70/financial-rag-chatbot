@@ -9,8 +9,17 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
+import streamlit as st
+import tempfile
 
 load_dotenv()
+
+# Load secrets from Streamlit Cloud if available, else fall back to .env
+def get_secret(key):
+    try:
+        return st.secrets[key]
+    except Exception:
+        return os.getenv(key)
 
 # Load the PDF and break it into smaller pieces
 
@@ -41,7 +50,7 @@ def build_vectorstore(chunks):
     embeddings = GoogleGenerativeAIEmbeddings(
         model="models/gemini-embedding-001",
         task_type="retrieval_document",
-        google_api_key=os.getenv("GOOGLE_API_KEY")
+        google_api_key=get_secret("GOOGLE_API_KEY")
         
     )
     vectorstore = FAISS.from_documents(chunks, embeddings)
@@ -71,7 +80,7 @@ def build_qa_chain(vectorstore, first_page_text=""):
     query_embeddings = GoogleGenerativeAIEmbeddings(
         model="models/gemini-embedding-001",
         task_type="retrieval_query",
-        google_api_key=os.getenv("GOOGLE_API_KEY")
+        google_api_key=get_secret("GOOGLE_API_KEY")
     )
     retriever = vectorstore.as_retriever(
         search_kwargs={"k": 4},
