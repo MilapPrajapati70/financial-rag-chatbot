@@ -65,21 +65,25 @@ if "current_file" not in st.session_state:
 
 # Only reprocess if a new file was uploaded
 if uploaded_file and uploaded_file.name != st.session_state.current_file:
-    with st.spinner("Reading and indexing document..."):
-        # Save to temp file since PyPDFLoader needs a file path
+    with st.spinner("Reading document..."):
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
             tmp.write(uploaded_file.read())
             tmp_path = tmp.name
-
         chunks, pages = load_and_chunk(tmp_path)
-        vectorstore = build_vectorstore(chunks)
-        chain, retriever = build_qa_chain(vectorstore, pages[0].page_content )
+
+    st.info(f"Indexing {len(chunks)} chunks — this takes 1-2 min for large documents...")
+    progress = st.progress(0)
+
+    with st.spinner("Building search index..."):
+        vectorstore = build_vectorstore(chunks, progress)
+        chain, retriever = build_qa_chain(vectorstore, pages[0].page_content)
 
         st.session_state.chain = chain
         st.session_state.retriever = retriever
         st.session_state.current_file = uploaded_file.name
         st.session_state.messages = []
         os.unlink(tmp_path)
+        progress.empty()
 
     st.success(f"Ready! Indexed {len(chunks)} chunks. Ask anything below.")
 
@@ -94,7 +98,7 @@ if st.session_state.chain:
                     for src in msg["sources"]:
                         st.caption(f"Page {src['page']}: {src['text']}")
 
-    if question := st.chat_input("Ask a question about the document..."):
+    if question := st.chat_input("Ask a question about the document...", key="chat-input"):
         st.session_state.messages.append({"role": "user", "content": question})
         with st.chat_message("user"):
             st.write(question)
