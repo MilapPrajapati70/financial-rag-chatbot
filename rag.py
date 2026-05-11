@@ -38,12 +38,33 @@ def load_and_chunk(pdf_path: str):
 
 # Store chunk embeddings in FAISS for fast lookup
 
-def build_vectorstore(chunks):
-    embeddings = HuggingFaceEmbeddings(
-        model_name="all-MiniLM-L6-v2"
-        
+def build_vectorstore(chunks, progress_bar=None):
+    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    
+    # Embed in batches and update progress
+    from langchain_community.vectorstores import FAISS
+    texts = [c.page_content for c in chunks]
+    metadatas = [c.metadata for c in chunks]
+    
+    batch_size = 50
+    all_embeddings = []
+    
+    for i in range(0, len(texts), batch_size):
+        batch = texts[i:i+batch_size]
+        batch_embeddings = embeddings.embed_documents(batch)
+        all_embeddings.extend(batch_embeddings)
+        if progress_bar:
+            progress_bar.progress(min(i + batch_size, len(texts)) / len(texts))
+    
+    import faiss
+    import numpy as np
+    from langchain_community.vectorstores import FAISS as FAISSStore
+    
+    vectorstore = FAISSStore.from_embeddings(
+        list(zip(texts, all_embeddings)),
+        embeddings,
+        metadatas=metadatas
     )
-    vectorstore = FAISS.from_documents(chunks, embeddings)
     return vectorstore
 
 
@@ -75,7 +96,7 @@ def build_qa_chain(vectorstore, first_page_text=""):
         model_name="all-MiniLM-L6-v2"
     )
     retriever = vectorstore.as_retriever(
-        search_kwargs={"k": 4},
+        search_kwargs={"k": 6},
         embedding=query_embeddings
         
     )
