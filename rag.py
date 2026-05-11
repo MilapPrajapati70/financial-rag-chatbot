@@ -49,17 +49,20 @@ def build_vectorstore(chunks):
 
 # Connect retriever + LLM into a single pipeline
 
-PROMPT_TEMPLATE = """You are a document assistant. 
-Answer the question using only the context provided below.
-If you can't find the answer, say so honestly.
-Reference page numbers where relevant.
+PPROMPT_TEMPLATE = """You are a helpful document assistant.
 
-Context:
+You have access to context extracted from an uploaded document.
+- If the question can be answered from the context, answer it clearly and cite the page number.
+- If the question is a general knowledge question not related to the document, answer it from your own knowledge and mention it's not from the document.
+- If the question is about the document but the answer isn't in the context, say "I couldn't find that specific information in the document."
+
+Context from document:
 {context}
 
 Question: {question}
 
 Answer:"""
+
 def build_qa_chain(vectorstore, first_page_text=""):
     prompt = PromptTemplate(
         template=PROMPT_TEMPLATE,

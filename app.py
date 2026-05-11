@@ -2,7 +2,6 @@ import streamlit as st
 import tempfile
 import os
 
-# Must happen before rag.py imports so os.getenv() works
 try:
     os.environ["GOOGLE_API_KEY"] = st.secrets["GOOGLE_API_KEY"]
     os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
@@ -15,6 +14,34 @@ st.set_page_config(page_title="Financial RAG Chatbot", page_icon="📄", layout=
 st.title("📄 Financial Document Q&A")
 st.caption("Ask questions about any financial document — powered by RAG")
 
+# Simple questions that don't need document context
+GENERAL_QUESTIONS = ["hi", "hello", "how are you", "what can you do", "help"]
+
+if question := st.chat_input("Ask a question about the document..."):
+    st.session_state.messages.append({"role": "user", "content": question})
+    with st.chat_message("user"):
+        st.write(question)
+
+    with st.chat_message("assistant"):
+        with st.spinner("Thinking..."):
+            # Handle greetings directly
+            if question.lower().strip() in GENERAL_QUESTIONS:
+                answer = "Hi! Upload a PDF and ask me anything about it — I can find information, summarize sections, and answer questions with page citations."
+                docs = []
+                sources = []
+            else:
+                answer = st.session_state.chain.invoke(question)
+                docs = st.session_state.retriever.invoke(question)
+                sources = [
+                    {"page": d.metadata.get("page", "?"),
+                     "text": d.page_content[:120] + "..."}
+                    for d in docs
+                ]
+            st.write(answer)
+            if sources:
+                with st.expander("Sources"):
+                    for src in sources:
+                        st.caption(f"Page {src['page']}: {src['text']}")
 
 with st.sidebar:
     st.header("Upload Document")
