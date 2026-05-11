@@ -49,7 +49,7 @@ def build_vectorstore(chunks):
 
 # Connect retriever + LLM into a single pipeline
 
-PPROMPT_TEMPLATE = """You are a helpful document assistant.
+PROMPT_TEMPLATE = """You are a helpful document assistant.
 
 You have access to context extracted from an uploaded document.
 - If the question can be answered from the context, answer it clearly and cite the page number.
